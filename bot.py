@@ -1,4 +1,3 @@
-%%writefile bot.py
 
 from langchain.agents import initialize_agent, AgentType
 from langchain.memory import ConversationBufferMemory
@@ -27,7 +26,6 @@ def parse_input(input_str):
     """Fungsi pembantu untuk mem-parse string input tool."""
     parts = input_str.split(";")
     return dict(pair.split("=") for pair in parts if "=" in pair)
-
 
 @tool
 def get_brands_str(input_str: str) -> str:
@@ -114,12 +112,11 @@ def get_replicate_api_token():
     """Mendapatkan Replicate API Token dari lingkungan yang berbeda."""
     load_dotenv()
 
-    if st and hasattr(st, 'secrets'):
-        if 'REPLICATE_API_TOKEN' in st.secrets:
-            return st.secrets['REPLICATE_API_TOKEN']
-        if 'api_token' in st.secrets:
-            return st.secrets['api_token']
-            
+    if st and hasattr(st, 'secrets') and 'REPLICATE_API_TOKEN' in st.secrets:
+        return st.secrets['REPLICATE_API_TOKEN']
+    if st and hasattr(st, 'secrets') and 'api_token' in st.secrets:
+        return st.secrets['api_token']
+    
     if 'REPLICATE_API_TOKEN' in os.environ:
         return os.environ['REPLICATE_API_TOKEN']
     if 'api_token' in os.environ:
@@ -132,7 +129,7 @@ def build_agent():
     replicate_token = get_replicate_api_token()
     
     if not replicate_token:
-        raise ValueError("REPLICATE_API_TOKEN tidak ditemukan. Harap pastikan token Anda telah diunggah dengan nama 'REPLICATE_API_TOKEN' (disarankan) atau 'api_token' di Secrets.")
+        raise ValueError("REPLICATE_API_TOKEN tidak ditemukan. Harap pastikan token Anda telah diunggah dengan nama 'api_token' atau 'REPLICATE_API_TOKEN' di Secrets (Colab/Streamlit).")
 
     os.environ["REPLICATE_API_TOKEN"] = replicate_token
     llm = Replicate(model="anthropic/claude-3.5-haiku")
