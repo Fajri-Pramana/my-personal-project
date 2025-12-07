@@ -1,0 +1,9 @@
+
+streamlit==1.52.0
+pyngrok==7.5.0
+python-dotenv==1.2.1
+langchain==0.2.16
+langchain-core==0.2.41
+langchain-community==0.2.11
+replicate==1.0.7
+requests==2.32.3
