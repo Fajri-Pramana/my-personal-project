@@ -1,7 +1,7 @@
 
 import streamlit as st
 from bot import build_agent
-import time # KRITIS: Memperbaiki NameError
+import time # KRITIS: Memperbaiki NameError: name 'time' is not defined
 import os 
 
 st.set_page_config(page_title="Asisten Rekomendasi Kendaraan 🚗", layout="wide")
