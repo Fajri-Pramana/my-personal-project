@@ -9,18 +9,16 @@ import requests
 import os
 import json
 import sqlite3
-import time # Diperlukan untuk jeda di tools
+import time 
+
+try:
+    import streamlit as st
+except ImportError:
+    st = None
 
 conn = sqlite3.connect("data.db", check_same_thread=False)
 cursor = conn.cursor()
-
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    timestamp TEXT,
-    message TEXT
-)
-""")
+cursor.execute("CREATE TABLE IF NOT EXISTS logs (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT, message TEXT)")
 conn.commit()
 
 
@@ -28,7 +26,6 @@ def parse_input(input_str):
     """Fungsi pembantu untuk mem-parse string input tool."""
     parts = input_str.split(";")
     return dict(pair.split("=") for pair in parts if "=" in pair)
-
 
 @tool
 def get_brands_str(input_str: str) -> str:
@@ -111,12 +108,30 @@ def get_models_and_years_tool(input_str: str) -> str:
         return json.dumps({"error": f"Kesalahan saat mengambil model/tahun: {str(e)}. Pastikan vehicle_type dan brand_code sudah benar."})
 
 
-def build_agent():
+def get_replicate_api_token():
+    """Mendapatkan Replicate API Token dari lingkungan yang berbeda."""
     load_dotenv()
-    
-    if "REPLICATE_API_TOKEN" not in os.environ:
-        raise ValueError("REPLICATE_API_TOKEN tidak ditemukan di environment variable. Pastikan Anda mengaturnya di Google Colab secrets.")
 
+    if st and hasattr(st, 'secrets') and 'REPLICATE_API_TOKEN' in st.secrets:
+        return st.secrets['REPLICATE_API_TOKEN']
+    if st and hasattr(st, 'secrets') and 'api_token' in st.secrets:
+        return st.secrets['api_token']
+    
+    if 'REPLICATE_API_TOKEN' in os.environ:
+        return os.environ['REPLICATE_API_TOKEN']
+    if 'api_token' in os.environ:
+        return os.environ['api_token']
+
+    return None
+
+def build_agent():
+    
+    replicate_token = get_replicate_api_token()
+    
+    if not replicate_token:
+        raise ValueError("REPLICATE_API_TOKEN tidak ditemukan. Harap pastikan token Anda telah diunggah dengan nama 'api_token' atau 'REPLICATE_API_TOKEN' di Secrets (Colab/Streamlit).")
+
+    os.environ["REPLICATE_API_TOKEN"] = replicate_token
     llm = Replicate(model="anthropic/claude-3.5-haiku")
 
     system_message = """
@@ -124,10 +139,10 @@ def build_agent():
     Tugas Anda adalah membantu pengguna menemukan mobil, motor, atau truk yang paling sesuai dengan kebutuhan dan preferensi mereka.
 
     **PRINSIP KERJA:**
-    1.  **Sapaan dan Pengantar:** Selalu sapa pengguna dengan ramah dan tanyakan kebutuhan mereka.
+    1.  **Sapaan dan Pengantar:** Selalu sapa pengguna dengan ramah.
     2.  **Kumpulkan Preferensi:** Tanyakan kepada pengguna tentang Tipe Kendaraan (gunakan kode FIPE: `carros`, `motos`, atau `caminhoes`).
-    3.  **Gunakan Perkakas:** Gunakan `get_brands_str` untuk mendapatkan daftar merek, lalu `get_models_and_years_tool` setelah pengguna memilih kode merek.
-    4.  **Berikan Rekomendasi Akhir:** Berikan rekomendasi berupa **daftar mobil yang sesuai** berdasarkan data yang dikumpulkan.
+    3.  **Gunakan Perkakas:** Gunakan `get_brands_str` untuk mendapatkan merek, lalu `get_models_and_years_tool` untuk model/tahun.
+    4.  **Berikan Rekomendasi Akhir:** Berikan rekomendasi berupa daftar mobil yang sesuai.
     """
 
     memory = ConversationBufferMemory(
